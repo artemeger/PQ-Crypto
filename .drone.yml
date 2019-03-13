@@ -1,0 +1,6 @@
+pipeline:
+    build:
+        image: maven:3-jdk-11
+        commands:
+        - mvn -V -B -s settings.xml deploy
+        secrets: [ nexus_username, nexus_password ]
