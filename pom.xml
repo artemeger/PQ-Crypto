@@ -7,6 +7,7 @@
     <groupId>com.refaine</groupId>
     <artifactId>crypto</artifactId>
     <version>1.0-SNAPSHOT</version>
+    <description>Cryptographic API</description>
 
     <build>
         <plugins>
