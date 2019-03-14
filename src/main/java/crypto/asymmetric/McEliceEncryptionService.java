@@ -5,13 +5,18 @@ import org.bouncycastle.asn1.*;
 import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.*;
+import org.bouncycastle.pqc.jcajce.provider.mceliece.BCMcElieceCCA2PrivateKey;
+import org.bouncycastle.pqc.jcajce.provider.mceliece.BCMcElieceCCA2PublicKey;
 import org.bouncycastle.pqc.jcajce.spec.McElieceCCA2KeyGenParameterSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import javax.crypto.Cipher;
 import java.io.ByteArrayInputStream;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.security.*;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
@@ -23,6 +28,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class McEliceEncryptionService {
 
     private Logger log = LoggerFactory.getLogger(this.getClass());
+    private McElieceCCA2KeyGenParameterSpec params = new McElieceCCA2KeyGenParameterSpec(11, 50);
 
     static {
         Security.addProvider(Identifiers.PQCPROVIDER);
@@ -34,8 +40,7 @@ public class McEliceEncryptionService {
             KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
             keyStore.load(null, password.toCharArray());
 
-            KeyPairGenerator generator = KeyPairGenerator.getInstance("McElieceKobaraImai");
-            McElieceCCA2KeyGenParameterSpec params = new McElieceCCA2KeyGenParameterSpec(9, 33);
+            KeyPairGenerator generator = KeyPairGenerator.getInstance(Identifiers.ASYM_CIPHER);
             generator.initialize(params);
             final KeyPair keyPair = generator.generateKeyPair();
 
@@ -48,21 +53,12 @@ public class McEliceEncryptionService {
             extGenerator.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
             extGenerator.addExtension(Extension.keyUsage, true, new KeyUsage(KeyUsage.encipherOnly));
 
-            final Optional<X509Certificate> rootCertOpt = signatureService.loadCertificateFromKeyStore(signerKeystorePath, signerKeyStorePass);
-            if(!rootCertOpt.isPresent()) throw new RuntimeException("RootCert was empty");
-            X509Certificate rootCert = rootCertOpt.get();
-
-            X509Certificate[] chain = new X509Certificate[1];
-            chain[0] = rootCert;
-            keyStore.setKeyEntry("rootCA", signerKeyPair.getPrivate(), password.toCharArray(), chain);
-
-            X509Certificate cert1 = generateCertificate(new X500Name(Identifiers.ROOTNAME), signerKeyPair.getPrivate(),
+            X509Certificate cert = generateCertificate(new X500Name(Identifiers.ROOTNAME), signerKeyPair.getPrivate(),
                     new X500Name(Identifiers.ROOTNAME), new AlgorithmIdentifier(BCObjectIdentifiers.sphincs256_with_SHA512),
                     extGenerator.generate(), keyPair.getPublic());
 
-            chain = new X509Certificate[2];
-            chain[0] = rootCert;
-            chain[1] = cert1;
+            X509Certificate[] chain = new X509Certificate[1];
+            chain[0] = cert;
             keyStore.setKeyEntry(Identifiers.ALIAS_ASYM, keyPair.getPrivate(), password.toCharArray(), chain);
 
             try (FileOutputStream fos = new FileOutputStream(name + Identifiers.KEYSTORE_FILE_FORMAT)) {
@@ -71,6 +67,42 @@ public class McEliceEncryptionService {
             }
         } catch (Exception e){
             log.error("Keystore creation failed with error: " + e.getMessage());
+        }
+    }
+
+    public Optional<KeyPair> loadKeyPairFromKeyStore(String filename, String password){
+        try {
+            KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
+            keyStore.load(new FileInputStream(filename), password.toCharArray());
+            final BCMcElieceCCA2PrivateKey privateKey = (BCMcElieceCCA2PrivateKey) keyStore.getKey(Identifiers.ALIAS_ASYM, password.toCharArray());
+            final X509Certificate certificate = (X509Certificate) keyStore.getCertificate(Identifiers.ALIAS_ASYM);
+            Certificate [] chain = keyStore.getCertificateChain(Identifiers.ALIAS_SIGNATURE);
+            final BCMcElieceCCA2PublicKey publicKey = (BCMcElieceCCA2PublicKey) certificate.getPublicKey();
+            log.info("KeyPair was successfully loaded from keystore");
+            return Optional.of(new KeyPair(publicKey, privateKey));
+        } catch (Exception e) {
+            log.error("KeyPair could not be loaded with error: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    public Optional<byte []> encrypt(BCMcElieceCCA2PublicKey publicKey, byte [] data){
+        try{
+            Cipher cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey, params);
+            return Optional.of(cipher.doFinal(data));
+        } catch (Exception e){
+            return Optional.empty();
+        }
+    }
+
+    public Optional<byte []> decrypt(PrivateKey privateKey, byte [] data){
+        try{
+            Cipher cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
+            cipher.init(Cipher.DECRYPT_MODE, privateKey, params);
+            return Optional.of(cipher.doFinal(data));
+        }catch (Exception e){
+            return Optional.empty();
         }
     }
 

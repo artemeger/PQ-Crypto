@@ -22,5 +22,6 @@ public final class Identifiers {
     public static final String ALIAS_SYM = "Threefish-Key";
     public static final String SYM_CIPHER = "Threefish-1024/CBC/PKCS7Padding";
     public static final String ALIAS_ASYM = "McElice-Key";
+    public static final String ASYM_CIPHER = "McEliecePointcheval";
 
 }

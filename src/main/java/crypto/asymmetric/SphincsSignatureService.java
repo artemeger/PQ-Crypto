@@ -18,7 +18,6 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.math.BigInteger;
 import java.security.*;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.Calendar;
@@ -62,27 +61,13 @@ public class SphincsSignatureService {
             KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
             keyStore.load(new FileInputStream(filename), password.toCharArray());
             final PrivateKey privateKey = (PrivateKey) keyStore.getKey(Identifiers.ALIAS_SIGNATURE, password.toCharArray());
-            final Certificate certificate = keyStore.getCertificate(Identifiers.ALIAS_SIGNATURE);
+            final X509Certificate certificate = (X509Certificate) keyStore.getCertificate(Identifiers.ALIAS_SIGNATURE);
             final PublicKey publicKey = certificate.getPublicKey();
             log.info("KeyPair was successfully loaded from keystore");
             return Optional.of(new KeyPair(publicKey, privateKey));
         } catch (Exception e) {
            log.error("KeyPair could not be loaded with error: " + e.getMessage());
            return Optional.empty();
-        }
-
-    }
-
-    public Optional<X509Certificate> loadCertificateFromKeyStore(String filename, String password){
-
-        try{
-            KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
-            keyStore.load(new FileInputStream(filename), password.toCharArray());
-            log.info("Certificate was successfully loaded from keystore");
-            return Optional.of((X509Certificate)keyStore.getCertificate(Identifiers.ALIAS_SIGNATURE));
-        } catch (Exception e) {
-            log.error("Certificate could not be loaded with error: " + e.getMessage());
-            return Optional.empty();
         }
 
     }
