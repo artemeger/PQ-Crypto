@@ -27,17 +27,18 @@ import java.util.Date;
 import java.util.Optional;
 
 
-public class SphincsEncryptionService {
+public class SphincsSignatureService {
 
     private static final Provider PQCPROVIDER = new BouncyCastlePQCProvider();
     private static final Provider BCPROVIDER = new BouncyCastleProvider();
     private static final String ROOTNAME = "CN=refaine.com";
     private static final int VALID = 100;
     private static final String SPHINCSSHA3ALGO = "SHA3-512WITHSPHINCS256";
+    private static final String SIGNATUREALGO = "SHA3-512withSPHINCS256";
     private static final String SHA3NAME = "SHA3-256";
     private static final String ALIAS = "Id-Keypair";
-    private static final String KEYSTORE_FORMAT = "JKS";
-    private static final String KEYSTORE_FILE_FORMAT = ".jks";
+    private static final String KEYSTORE_FORMAT = "UBER";
+    private static final String KEYSTORE_FILE_FORMAT = ".ubr";
     private Logger log = LoggerFactory.getLogger(this.getClass());
 
     static {
@@ -45,7 +46,7 @@ public class SphincsEncryptionService {
         Security.addProvider(BCPROVIDER);
     }
 
-    public void generateKeystore(String filename, String password) throws Exception{
+    public void generateKeystore(String name, String password) throws Exception{
 
         try {
             Sphincs256KeyPairGeneratorSpi generator = new Sphincs256KeyPairGeneratorSpi();
@@ -56,9 +57,9 @@ public class SphincsEncryptionService {
             X509Certificate[] certificateChain = new X509Certificate[1];
             certificateChain[0] = generateCertificate(keyPair);
             keyStore.setKeyEntry(ALIAS, keyPair.getPrivate(), password.toCharArray(), certificateChain);
-            try (FileOutputStream fos = new FileOutputStream(filename + KEYSTORE_FILE_FORMAT)) {
+            try (FileOutputStream fos = new FileOutputStream(name + KEYSTORE_FILE_FORMAT)) {
                 keyStore.store(fos, password.toCharArray());
-                log.info("Keystore was created successfully with name " + filename + KEYSTORE_FILE_FORMAT);
+                log.info("Keystore was created successfully with name " + name + KEYSTORE_FILE_FORMAT);
             }
         } catch (Exception e){
             log.error("Keystore creation failed with error: " + e.getMessage());
@@ -75,6 +76,7 @@ public class SphincsEncryptionService {
             final PrivateKey privateKey = (PrivateKey) keyStore.getKey(ALIAS, password.toCharArray());
             final Certificate certificate = keyStore.getCertificate(ALIAS);
             final PublicKey publicKey = certificate.getPublicKey();
+            log.info("KeyPair was successfully loaded from keystore");
             return Optional.of(new KeyPair(publicKey, privateKey));
         } catch (Exception e) {
            log.error("Keystore could not be loaded with error: " + e.getMessage());
@@ -107,6 +109,32 @@ public class SphincsEncryptionService {
         X509Certificate cert = new JcaX509CertificateConverter().setProvider(BCPROVIDER).getCertificate(certHolder);
         cert.verify(keyPair.getPublic());
         return cert;
+    }
+
+    public Optional<byte[]> getSignature(PrivateKey privateKey, byte [] data){
+        try{
+            Signature signature = Signature.getInstance(SIGNATUREALGO, PQCPROVIDER);
+            signature.initSign(privateKey);
+            signature.update(data);
+            log.info("Successfully loaded Signature");
+            return Optional.of(signature.sign());
+        } catch (Exception e){
+            log.error("Failed to encrypt data with error: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    public boolean verifySignature(PublicKey publicKey, byte [] data, byte[] signatureBytes){
+        try{
+            Signature signature = Signature.getInstance(SIGNATUREALGO, PQCPROVIDER);
+            signature.initVerify(publicKey);
+            signature.update(data);
+            log.info("Successfully loaded Signature");
+            return signature.verify(signatureBytes);
+        } catch (Exception e){
+            log.error("Failed to decrypt data with error: " + e.getMessage());
+            return false;
+        }
     }
 
 }
