@@ -35,7 +35,6 @@ public class SphincsSignatureService {
     }
 
     public void generateKeystore(String name, String password) {
-
         try {
             Sphincs256KeyPairGeneratorSpi generator = new Sphincs256KeyPairGeneratorSpi();
             generator.initialize(new SPHINCS256KeyGenParameterSpec(Identifiers.SHA3NAME), new SecureRandom());
@@ -52,11 +51,9 @@ public class SphincsSignatureService {
         } catch (Exception e){
             log.error("Keystore creation failed with error: " + e.getMessage());
         }
-
     }
 
     public Optional<KeyPair> loadKeyPairFromKeyStore(String filename, String password){
-
         try{
             KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
             keyStore.load(new FileInputStream(filename), password.toCharArray());
@@ -69,7 +66,6 @@ public class SphincsSignatureService {
            log.error("KeyPair could not be loaded with error: " + e.getMessage());
            return Optional.empty();
         }
-
     }
 
     public Optional<byte[]> getSignature(PrivateKey privateKey, byte [] data){
@@ -100,7 +96,6 @@ public class SphincsSignatureService {
 
     private X509Certificate generateCertificate(KeyPair keyPair) throws OperatorCreationException, CertificateException,
             NoSuchProviderException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
-
         Calendar calendar = Calendar.getInstance();
         Date validFrom = calendar.getTime();
         calendar.add(Calendar.YEAR, Identifiers.CERT_VALID);

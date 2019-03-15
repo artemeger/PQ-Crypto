@@ -5,9 +5,8 @@ import org.bouncycastle.asn1.*;
 import org.bouncycastle.asn1.bc.BCObjectIdentifiers;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.*;
-import org.bouncycastle.pqc.jcajce.provider.mceliece.BCMcElieceCCA2PrivateKey;
-import org.bouncycastle.pqc.jcajce.provider.mceliece.BCMcElieceCCA2PublicKey;
-import org.bouncycastle.pqc.jcajce.spec.McElieceCCA2KeyGenParameterSpec;
+import org.bouncycastle.pqc.jcajce.provider.mceliece.*;
+import org.bouncycastle.pqc.jcajce.spec.McElieceKeyGenParameterSpec;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -16,7 +15,6 @@ import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.security.*;
-import java.security.cert.Certificate;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
@@ -28,14 +26,15 @@ import java.util.concurrent.atomic.AtomicLong;
 public class McEliceEncryptionService {
 
     private Logger log = LoggerFactory.getLogger(this.getClass());
-    private McElieceCCA2KeyGenParameterSpec params = new McElieceCCA2KeyGenParameterSpec(11, 50);
+    private McElieceKeyGenParameterSpec params = new McElieceKeyGenParameterSpec(11, 50);
+    private  Cipher cipher;
 
     static {
         Security.addProvider(Identifiers.PQCPROVIDER);
         Security.addProvider(Identifiers.BCPROVIDER);
     }
 
-    public void generateKeystore(String name, String password, String signerKeystorePath, String signerKeyStorePass) throws Exception {
+    public void generateKeystore(String name, String password, String signerKeystorePath, String signerKeyStorePass) {
         try {
             KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
             keyStore.load(null, password.toCharArray());
@@ -74,10 +73,9 @@ public class McEliceEncryptionService {
         try {
             KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
             keyStore.load(new FileInputStream(filename), password.toCharArray());
-            final BCMcElieceCCA2PrivateKey privateKey = (BCMcElieceCCA2PrivateKey) keyStore.getKey(Identifiers.ALIAS_ASYM, password.toCharArray());
+            final BCMcEliecePrivateKey privateKey = (BCMcEliecePrivateKey) keyStore.getKey(Identifiers.ALIAS_ASYM, password.toCharArray());
             final X509Certificate certificate = (X509Certificate) keyStore.getCertificate(Identifiers.ALIAS_ASYM);
-            Certificate [] chain = keyStore.getCertificateChain(Identifiers.ALIAS_SIGNATURE);
-            final BCMcElieceCCA2PublicKey publicKey = (BCMcElieceCCA2PublicKey) certificate.getPublicKey();
+            final BCMcEliecePublicKey publicKey = (BCMcEliecePublicKey) certificate.getPublicKey();
             log.info("KeyPair was successfully loaded from keystore");
             return Optional.of(new KeyPair(publicKey, privateKey));
         } catch (Exception e) {
@@ -86,22 +84,26 @@ public class McEliceEncryptionService {
         }
     }
 
-    public Optional<byte []> encrypt(BCMcElieceCCA2PublicKey publicKey, byte [] data){
+    public Optional<byte []> encrypt(BCMcEliecePublicKey publicKey, byte [] data){
         try{
-            Cipher cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
-            cipher.init(Cipher.ENCRYPT_MODE, publicKey, params);
+            cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
+            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+            log.error("Successfully encrypted data");
             return Optional.of(cipher.doFinal(data));
         } catch (Exception e){
+            log.error("Encryption failed with error: " + e.getMessage());
             return Optional.empty();
         }
     }
 
-    public Optional<byte []> decrypt(PrivateKey privateKey, byte [] data){
+    public Optional<byte []> decrypt(BCMcEliecePrivateKey privateKey, byte [] data) {
         try{
-            Cipher cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
-            cipher.init(Cipher.DECRYPT_MODE, privateKey, params);
+            cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
+            cipher.init(Cipher.DECRYPT_MODE, privateKey);
+            log.error("Successfully decrypted data");
             return Optional.of(cipher.doFinal(data));
-        }catch (Exception e){
+        } catch (Exception e){
+            log.error("Decryption failed with error: " + e.getMessage());
             return Optional.empty();
         }
     }
