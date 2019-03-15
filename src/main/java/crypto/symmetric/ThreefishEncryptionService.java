@@ -25,9 +25,7 @@ public class ThreefishEncryptionService {
     }
 
     public void generateKeyStore(String name, String password) throws Exception {
-        KeyGenerator generator = KeyGenerator.getInstance(Identifiers.SYMALGORITHM, Identifiers.BCPROVIDER);
-        generator.init(Identifiers.KEYSIZE, new SecureRandom());
-        SecretKey secretKey = generator.generateKey();
+        SecretKey secretKey = generateSecretKey();
         KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
         keyStore.load(null, password.toCharArray());
         keyStore.setEntry(Identifiers.ALIAS_SYM, new KeyStore.SecretKeyEntry(secretKey),
@@ -36,6 +34,12 @@ public class ThreefishEncryptionService {
             keyStore.store(fos, password.toCharArray());
             log.info("Keystore was created successfully with name " + name + Identifiers.KEYSTORE_FILE_FORMAT);
         }
+    }
+
+    public SecretKey generateSecretKey() throws Exception {
+        KeyGenerator generator = KeyGenerator.getInstance(Identifiers.SYMALGORITHM, Identifiers.BCPROVIDER);
+        generator.init(Identifiers.KEYSIZE, new SecureRandom());
+        return generator.generateKey();
     }
 
     public Optional<SecretKey> loadSecretKeyFromKeyStore(String filename, String password){
