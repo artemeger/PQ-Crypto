@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 public class McEliceEncryptionService {
 
     private Logger log = LoggerFactory.getLogger(this.getClass());
-    private McElieceKeyGenParameterSpec params = new McElieceKeyGenParameterSpec(11, 50);
+    private McElieceKeyGenParameterSpec params = new McElieceKeyGenParameterSpec(13, 50);
     private  Cipher cipher;
 
     static {
