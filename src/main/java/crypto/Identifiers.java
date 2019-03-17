@@ -13,6 +13,7 @@ public final class Identifiers {
     public static final int CERT_VALID = 100;
     public static final String SPHINCSSHA3ALGO = "SHA3-512WITHSPHINCS256";
     public static final String SIGNATUREALGO = "SHA3-512withSPHINCS256";
+    public static final String SIGNATUREALGONAME = "SPHINCS256";
     public static final String SHA3NAME = "SHA3-256";
     public static final String ALIAS_SIGNATURE = "SPHINCS-Keypair";
     public static final String KEYSTORE_FORMAT = "UBER";

@@ -20,6 +20,7 @@ import java.math.BigInteger;
 import java.security.*;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.Optional;
@@ -91,6 +92,17 @@ public class SphincsSignatureService {
         } catch (Exception e){
             log.error("Failed to decrypt data with error: " + e.getMessage());
             return false;
+        }
+    }
+
+    public Optional<PublicKey> encodedToPublicKey(byte[] bytes) {
+        try {
+            KeyFactory factory = KeyFactory.getInstance(Identifiers.SIGNATUREALGONAME, Identifiers.PQCPROVIDER);
+            X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(bytes);
+            return Optional.of(factory.generatePublic(x509EncodedKeySpec));
+        } catch (Exception e){
+            log.error("Conversion of bytes to Public Key failed");
+            return Optional.empty();
         }
     }
 

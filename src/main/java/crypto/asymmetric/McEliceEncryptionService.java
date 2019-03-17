@@ -17,6 +17,7 @@ import java.io.FileOutputStream;
 import java.security.*;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.util.Calendar;
 import java.util.Date;
@@ -73,9 +74,9 @@ public class McEliceEncryptionService {
         try {
             KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
             keyStore.load(new FileInputStream(filename), password.toCharArray());
-            final BCMcEliecePrivateKey privateKey = (BCMcEliecePrivateKey) keyStore.getKey(Identifiers.ALIAS_ASYM, password.toCharArray());
+            final PrivateKey privateKey = (BCMcEliecePrivateKey) keyStore.getKey(Identifiers.ALIAS_ASYM, password.toCharArray());
             final X509Certificate certificate = (X509Certificate) keyStore.getCertificate(Identifiers.ALIAS_ASYM);
-            final BCMcEliecePublicKey publicKey = (BCMcEliecePublicKey) certificate.getPublicKey();
+            final PublicKey publicKey = certificate.getPublicKey();
             log.info("KeyPair was successfully loaded from keystore");
             return Optional.of(new KeyPair(publicKey, privateKey));
         } catch (Exception e) {
@@ -84,7 +85,7 @@ public class McEliceEncryptionService {
         }
     }
 
-    public Optional<byte []> encrypt(BCMcEliecePublicKey publicKey, byte [] data){
+    public Optional<byte []> encrypt(PublicKey publicKey, byte [] data){
         try{
             cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
             cipher.init(Cipher.ENCRYPT_MODE, publicKey);
@@ -96,7 +97,7 @@ public class McEliceEncryptionService {
         }
     }
 
-    public Optional<byte []> decrypt(BCMcEliecePrivateKey privateKey, byte [] data) {
+    public Optional<byte []> decrypt(PrivateKey privateKey, byte [] data) {
         try{
             cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
@@ -104,6 +105,17 @@ public class McEliceEncryptionService {
             return Optional.of(cipher.doFinal(data));
         } catch (Exception e){
             log.error("Decryption failed with error: " + e.getMessage());
+            return Optional.empty();
+        }
+    }
+
+    public Optional<PublicKey> encodedToPublicKey(byte[] bytes) {
+        try {
+            KeyFactory factory = KeyFactory.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
+            X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(bytes);
+            return Optional.of(factory.generatePublic(x509EncodedKeySpec));
+        } catch (Exception e){
+            log.error("Conversion of bytes to Public Key failed");
             return Optional.empty();
         }
     }
