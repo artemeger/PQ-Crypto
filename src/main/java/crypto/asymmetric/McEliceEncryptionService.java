@@ -89,7 +89,7 @@ public class McEliceEncryptionService {
         try{
             cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
             cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-            log.error("Successfully encrypted data");
+            log.info("Successfully encrypted data");
             return Optional.of(cipher.doFinal(data));
         } catch (Exception e){
             log.error("Encryption failed with error: " + e.getMessage());
@@ -101,7 +101,7 @@ public class McEliceEncryptionService {
         try{
             cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
             cipher.init(Cipher.DECRYPT_MODE, privateKey);
-            log.error("Successfully decrypted data");
+            log.info("Successfully decrypted data");
             return Optional.of(cipher.doFinal(data));
         } catch (Exception e){
             log.error("Decryption failed with error: " + e.getMessage());
