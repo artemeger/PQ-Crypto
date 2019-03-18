@@ -1,27 +1,22 @@
 package crypto.symmetric;
 
 import crypto.Identifiers;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.PBEKeySpec;
 import javax.crypto.spec.SecretKeySpec;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.Security;
-import java.security.spec.EncodedKeySpec;
-import java.security.spec.KeySpec;
-import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
-import java.util.Optional;
 
 public class ThreefishEncryptionService {
 
@@ -53,43 +48,28 @@ public class ThreefishEncryptionService {
         return new SecretKeySpec(keyBytes, 0, keyBytes.length, Identifiers.SYMALGORITHM);
     }
 
-    public Optional<SecretKey> loadSecretKeyFromKeyStore(String filename, String password){
-        try{
-            KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
-            keyStore.load(new FileInputStream(filename), password.toCharArray());
-            log.info("Symmetric key was loaded successfully from keystore");
-            return Optional.of((SecretKey) keyStore.getKey(Identifiers.ALIAS_SYM, password.toCharArray()));
-        } catch (Exception e) {
-            log.error("Failed to load symmetric key from keystore with error:" + e.getMessage());
-            return Optional.empty();
-        }
+    public SecretKey loadSecretKeyFromKeyStore(String filename, String password) throws Exception {
+        KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
+        keyStore.load(new FileInputStream(filename), password.toCharArray());
+        log.info("Symmetric key was loaded successfully from keystore");
+        return (SecretKey) keyStore.getKey(Identifiers.ALIAS_SYM, password.toCharArray());
     }
 
-    public Optional<ArrayList<byte[]>> encrypt(SecretKey secretKey, byte [] data){
-        try{
-            byte[] iv = new byte[128];
-            new SecureRandom().nextBytes(iv);
-            Cipher cipher = Cipher.getInstance(Identifiers.SYM_CIPHER);
-            cipher.init(Cipher.ENCRYPT_MODE, secretKey, new IvParameterSpec(iv));
-            ArrayList<byte []> result = new ArrayList<>();
-            result.add(cipher.doFinal(data));
-            result.add(iv);
-            return Optional.of(result);
-        } catch (Exception e){
-            log.error(e.getMessage());
-            return Optional.empty();
-        }
+    public ArrayList<byte[]> encrypt(SecretKey secretKey, byte [] data) throws Exception {
+        byte[] iv = new byte[128];
+        new SecureRandom().nextBytes(iv);
+        Cipher cipher = Cipher.getInstance(Identifiers.SYM_CIPHER);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, new IvParameterSpec(iv));
+        ArrayList<byte []> result = new ArrayList<>();
+        result.add(cipher.doFinal(data));
+        result.add(iv);
+        return result;
     }
 
-    public Optional<byte[]> decrypt(SecretKey secretKey, byte [] encrypted, byte [] iv){
-        try{
-            Cipher cipher = Cipher.getInstance(Identifiers.SYM_CIPHER);
-            cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(iv));
-            return Optional.of(cipher.doFinal(encrypted));
-        } catch (Exception e){
-            log.error(e.getMessage());
-            return Optional.empty();
-        }
+    public byte[] decrypt(SecretKey secretKey, byte [] encrypted, byte [] iv) throws Exception{
+        Cipher cipher = Cipher.getInstance(Identifiers.SYM_CIPHER);
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, new IvParameterSpec(iv));
+        return cipher.doFinal(encrypted);
     }
 
 }

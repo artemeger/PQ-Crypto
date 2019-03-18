@@ -8,7 +8,6 @@ import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -21,46 +20,40 @@ public class SphincsSignatureServiceTest {
     private static String password = "mypassword";
 
     @Test
-    public void generateSaveLoadKeyStore(){
+    public void generateSaveLoadKeyStore() throws Exception {
         classUnderTest.generateKeystore(signKeyStoreName, password);
         assertTrue(Files.exists(Paths.get(signKeyStoreName + ".ubr")));
-        Optional<KeyPair> keyPairOpt = classUnderTest.loadKeyPairFromKeyStore(signKeyStoreName + ".ubr", password);
-        assertTrue(keyPairOpt.isPresent());
+        classUnderTest.loadKeyPairFromKeyStore(signKeyStoreName + ".ubr", password);
+    }
+
+    @Test(expected = Exception.class)
+    public void LoadKeyStoreWithWrongPass() throws Exception {
+        classUnderTest.generateKeystore(signKeyStoreName, password);
+        assertTrue(Files.exists(Paths.get(signKeyStoreName + ".ubr")));
+        classUnderTest.loadKeyPairFromKeyStore("keystore.ubr", "this");
     }
 
     @Test
-    public void LoadKeyStoreWithWrongPass(){
+    public void createSignatureAndVerifyTest() throws Exception {
         classUnderTest.generateKeystore(signKeyStoreName, password);
         assertTrue(Files.exists(Paths.get(signKeyStoreName + ".ubr")));
-        Optional<KeyPair> keyPairOpt = classUnderTest.loadKeyPairFromKeyStore("keystore.ubr", "this");
-        assertTrue(keyPairOpt.isEmpty());
-    }
-
-    @Test
-    public void createSignatureAndVerifyTest(){
-        classUnderTest.generateKeystore(signKeyStoreName, password);
-        assertTrue(Files.exists(Paths.get(signKeyStoreName + ".ubr")));
-        Optional<KeyPair> keyPairOpt = classUnderTest.loadKeyPairFromKeyStore(signKeyStoreName + ".ubr", password);
-        assertTrue(keyPairOpt.isPresent());
+        KeyPair keyPair = classUnderTest.loadKeyPairFromKeyStore(signKeyStoreName + ".ubr", password);
         byte[] data = new byte[20];
         new SecureRandom().nextBytes(data);
-        Optional<byte[]> signatureBytesOpt = classUnderTest.getSignature(keyPairOpt.get().getPrivate(), data);
-        assertTrue(signatureBytesOpt.isPresent());
-        assertTrue(classUnderTest.verifySignature(keyPairOpt.get().getPublic(), data, signatureBytesOpt.get()));
+        byte[] signatureBytes = classUnderTest.getSignature(keyPair.getPrivate(), data);
+        assertTrue(classUnderTest.verifySignature(keyPair.getPublic(), data, signatureBytes));
     }
 
     @Test
-    public void encodedToPublicKeyTest(){
+    public void encodedToPublicKeyTest() throws Exception {
         classUnderTest.generateKeystore(signKeyStoreName, password);
         assertTrue(Files.exists(Paths.get(signKeyStoreName + ".ubr")));
-        Optional<KeyPair> keyPairOpt = classUnderTest.loadKeyPairFromKeyStore(signKeyStoreName + ".ubr", password);
-        assertTrue(keyPairOpt.isPresent());
-        PublicKey publicKey = keyPairOpt.get().getPublic();
+        KeyPair keyPair = classUnderTest.loadKeyPairFromKeyStore(signKeyStoreName + ".ubr", password);
+        PublicKey publicKey = keyPair.getPublic();
         byte [] encodedBytes = publicKey.getEncoded();
-        Optional<PublicKey> publicKey2 = classUnderTest.encodedToPublicKey(encodedBytes);
-        assertTrue(publicKey2.isPresent());
-        assertEquals(publicKey.getAlgorithm(), publicKey2.get().getAlgorithm());
-        assertTrue(Arrays.equals(publicKey.getEncoded(), publicKey2.get().getEncoded()));
+        PublicKey publicKey2 = classUnderTest.encodedToPublicKey(encodedBytes);
+        assertEquals(publicKey.getAlgorithm(), publicKey2.getAlgorithm());
+        assertTrue(Arrays.equals(publicKey.getEncoded(), publicKey2.getEncoded()));
         assertEquals(publicKey.hashCode(), publicKey2.hashCode());
     }
 

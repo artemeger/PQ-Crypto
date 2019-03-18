@@ -21,7 +21,6 @@ import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class McEliceEncryptionService {
@@ -45,9 +44,7 @@ public class McEliceEncryptionService {
             final KeyPair keyPair = generator.generateKeyPair();
 
             SphincsSignatureService signatureService = new SphincsSignatureService();
-            final Optional<KeyPair> signerKeyPairOpt = signatureService.loadKeyPairFromKeyStore(signerKeystorePath, signerKeyStorePass);
-            if(!signerKeyPairOpt.isPresent()) throw new RuntimeException("Signature KeyPair was empty");
-            KeyPair signerKeyPair = signerKeyPairOpt.get();
+            final KeyPair signerKeyPair = signatureService.loadKeyPairFromKeyStore(signerKeystorePath, signerKeyStorePass);
 
             ExtensionsGenerator extGenerator = new ExtensionsGenerator();
             extGenerator.addExtension(Extension.basicConstraints, false, new BasicConstraints(false));
@@ -70,54 +67,34 @@ public class McEliceEncryptionService {
         }
     }
 
-    public Optional<KeyPair> loadKeyPairFromKeyStore(String filename, String password){
-        try {
-            KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
-            keyStore.load(new FileInputStream(filename), password.toCharArray());
-            final PrivateKey privateKey = (BCMcEliecePrivateKey) keyStore.getKey(Identifiers.ALIAS_ASYM, password.toCharArray());
-            final X509Certificate certificate = (X509Certificate) keyStore.getCertificate(Identifiers.ALIAS_ASYM);
-            final PublicKey publicKey = certificate.getPublicKey();
-            log.info("KeyPair was successfully loaded from keystore");
-            return Optional.of(new KeyPair(publicKey, privateKey));
-        } catch (Exception e) {
-            log.error("KeyPair could not be loaded with error: " + e.getMessage());
-            return Optional.empty();
-        }
+    public KeyPair loadKeyPairFromKeyStore(String filename, String password) throws Exception {
+        KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
+        keyStore.load(new FileInputStream(filename), password.toCharArray());
+        final PrivateKey privateKey = (BCMcEliecePrivateKey) keyStore.getKey(Identifiers.ALIAS_ASYM, password.toCharArray());
+        final X509Certificate certificate = (X509Certificate) keyStore.getCertificate(Identifiers.ALIAS_ASYM);
+        final PublicKey publicKey = certificate.getPublicKey();
+        log.info("KeyPair was successfully loaded from keystore");
+        return new KeyPair(publicKey, privateKey);
     }
 
-    public Optional<byte []> encrypt(PublicKey publicKey, byte [] data){
-        try{
-            cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
-            cipher.init(Cipher.ENCRYPT_MODE, publicKey);
-            log.info("Successfully encrypted data");
-            return Optional.of(cipher.doFinal(data));
-        } catch (Exception e){
-            log.error("Encryption failed with error: " + e.getMessage());
-            return Optional.empty();
-        }
+    public byte [] encrypt(PublicKey publicKey, byte [] data) throws Exception {
+        cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
+        cipher.init(Cipher.ENCRYPT_MODE, publicKey);
+        log.info("Successfully encrypted data");
+        return cipher.doFinal(data);
     }
 
-    public Optional<byte []> decrypt(PrivateKey privateKey, byte [] data) {
-        try{
-            cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
-            cipher.init(Cipher.DECRYPT_MODE, privateKey);
-            log.info("Successfully decrypted data");
-            return Optional.of(cipher.doFinal(data));
-        } catch (Exception e){
-            log.error("Decryption failed with error: " + e.getMessage());
-            return Optional.empty();
-        }
+    public byte [] decrypt(PrivateKey privateKey, byte [] data) throws Exception {
+        cipher = Cipher.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
+        cipher.init(Cipher.DECRYPT_MODE, privateKey);
+        log.info("Successfully decrypted data");
+        return cipher.doFinal(data);
     }
 
-    public Optional<PublicKey> encodedToPublicKey(byte[] bytes) {
-        try {
-            KeyFactory factory = KeyFactory.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
-            X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(bytes);
-            return Optional.of(factory.generatePublic(x509EncodedKeySpec));
-        } catch (Exception e){
-            log.error("Conversion of bytes to Public Key failed");
-            return Optional.empty();
-        }
+    public PublicKey encodedToPublicKey(byte[] bytes) throws Exception {
+        KeyFactory factory = KeyFactory.getInstance(Identifiers.ASYM_CIPHER, Identifiers.PQCPROVIDER);
+        X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(bytes);
+        return factory.generatePublic(x509EncodedKeySpec);
     }
 
     private X509Certificate generateCertificate(X500Name signerName, PrivateKey signerKey, X500Name dn, AlgorithmIdentifier sigName,

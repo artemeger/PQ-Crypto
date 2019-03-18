@@ -23,7 +23,6 @@ import java.security.cert.X509Certificate;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.Optional;
 
 
 public class SphincsSignatureService {
@@ -35,75 +34,52 @@ public class SphincsSignatureService {
         Security.addProvider(Identifiers.BCPROVIDER);
     }
 
-    public void generateKeystore(String name, String password) {
-        try {
-            Sphincs256KeyPairGeneratorSpi generator = new Sphincs256KeyPairGeneratorSpi();
-            generator.initialize(new SPHINCS256KeyGenParameterSpec(Identifiers.SHA3NAME), new SecureRandom());
-            final KeyPair keyPair = generator.generateKeyPair();
-            KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
-            keyStore.load(null, password.toCharArray());
-            X509Certificate[] certificateChain = new X509Certificate[1];
-            certificateChain[0] = generateCertificate(keyPair);
-            keyStore.setKeyEntry(Identifiers.ALIAS_SIGNATURE, keyPair.getPrivate(), password.toCharArray(), certificateChain);
-            try (FileOutputStream fos = new FileOutputStream(name + Identifiers.KEYSTORE_FILE_FORMAT)) {
-                keyStore.store(fos, password.toCharArray());
-                log.info("Keystore was created successfully with name " + name + Identifiers.KEYSTORE_FILE_FORMAT);
-            }
-        } catch (Exception e){
-            log.error("Keystore creation failed with error: " + e.getMessage());
+    public void generateKeystore(String name, String password) throws Exception {
+
+        Sphincs256KeyPairGeneratorSpi generator = new Sphincs256KeyPairGeneratorSpi();
+        generator.initialize(new SPHINCS256KeyGenParameterSpec(Identifiers.SHA3NAME), new SecureRandom());
+        final KeyPair keyPair = generator.generateKeyPair();
+        KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
+        keyStore.load(null, password.toCharArray());
+        X509Certificate[] certificateChain = new X509Certificate[1];
+        certificateChain[0] = generateCertificate(keyPair);
+        keyStore.setKeyEntry(Identifiers.ALIAS_SIGNATURE, keyPair.getPrivate(), password.toCharArray(), certificateChain);
+        try (FileOutputStream fos = new FileOutputStream(name + Identifiers.KEYSTORE_FILE_FORMAT)) {
+            keyStore.store(fos, password.toCharArray());
+            log.info("Keystore was created successfully with name " + name + Identifiers.KEYSTORE_FILE_FORMAT);
         }
     }
 
-    public Optional<KeyPair> loadKeyPairFromKeyStore(String filename, String password){
-        try{
-            KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
-            keyStore.load(new FileInputStream(filename), password.toCharArray());
-            final PrivateKey privateKey = (PrivateKey) keyStore.getKey(Identifiers.ALIAS_SIGNATURE, password.toCharArray());
-            final X509Certificate certificate = (X509Certificate) keyStore.getCertificate(Identifiers.ALIAS_SIGNATURE);
-            final PublicKey publicKey = certificate.getPublicKey();
-            log.info("KeyPair was successfully loaded from keystore");
-            return Optional.of(new KeyPair(publicKey, privateKey));
-        } catch (Exception e) {
-           log.error("KeyPair could not be loaded with error: " + e.getMessage());
-           return Optional.empty();
-        }
+    public KeyPair loadKeyPairFromKeyStore(String filename, String password) throws Exception {
+        KeyStore keyStore = KeyStore.getInstance(Identifiers.KEYSTORE_FORMAT);
+        keyStore.load(new FileInputStream(filename), password.toCharArray());
+        final PrivateKey privateKey = (PrivateKey) keyStore.getKey(Identifiers.ALIAS_SIGNATURE, password.toCharArray());
+        final X509Certificate certificate = (X509Certificate) keyStore.getCertificate(Identifiers.ALIAS_SIGNATURE);
+        final PublicKey publicKey = certificate.getPublicKey();
+        log.info("KeyPair was successfully loaded from keystore");
+        return new KeyPair(publicKey, privateKey);
     }
 
-    public Optional<byte[]> getSignature(PrivateKey privateKey, byte [] data){
-        try{
-            Signature signature = Signature.getInstance(Identifiers.SIGNATUREALGO, Identifiers.PQCPROVIDER);
-            signature.initSign(privateKey);
-            signature.update(data);
-            log.info("Successfully loaded Signature");
-            return Optional.of(signature.sign());
-        } catch (Exception e){
-            log.error("Failed to encrypt data with error: " + e.getMessage());
-            return Optional.empty();
-        }
+    public byte[] getSignature(PrivateKey privateKey, byte [] data) throws Exception {
+        Signature signature = Signature.getInstance(Identifiers.SIGNATUREALGO, Identifiers.PQCPROVIDER);
+        signature.initSign(privateKey);
+        signature.update(data);
+        log.info("Successfully loaded Signature");
+        return signature.sign();
     }
 
-    public boolean verifySignature(PublicKey publicKey, byte [] data, byte[] signatureBytes){
-        try{
-            Signature signature = Signature.getInstance(Identifiers.SIGNATUREALGO, Identifiers.PQCPROVIDER);
-            signature.initVerify(publicKey);
-            signature.update(data);
-            log.info("Successfully loaded Signature");
-            return signature.verify(signatureBytes);
-        } catch (Exception e){
-            log.error("Failed to decrypt data with error: " + e.getMessage());
-            return false;
-        }
+    public boolean verifySignature(PublicKey publicKey, byte [] data, byte[] signatureBytes) throws Exception {
+        Signature signature = Signature.getInstance(Identifiers.SIGNATUREALGO, Identifiers.PQCPROVIDER);
+        signature.initVerify(publicKey);
+        signature.update(data);
+        log.info("Successfully loaded Signature");
+        return signature.verify(signatureBytes);
     }
 
-    public Optional<PublicKey> encodedToPublicKey(byte[] bytes) {
-        try {
-            KeyFactory factory = KeyFactory.getInstance(Identifiers.SIGNATUREALGONAME, Identifiers.PQCPROVIDER);
-            X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(bytes);
-            return Optional.of(factory.generatePublic(x509EncodedKeySpec));
-        } catch (Exception e){
-            log.error("Conversion of bytes to Public Key failed");
-            return Optional.empty();
-        }
+    public PublicKey encodedToPublicKey(byte[] bytes) throws Exception {
+        KeyFactory factory = KeyFactory.getInstance(Identifiers.SIGNATUREALGONAME, Identifiers.PQCPROVIDER);
+        X509EncodedKeySpec x509EncodedKeySpec = new X509EncodedKeySpec(bytes);
+        return factory.generatePublic(x509EncodedKeySpec);
     }
 
     private X509Certificate generateCertificate(KeyPair keyPair) throws OperatorCreationException, CertificateException,

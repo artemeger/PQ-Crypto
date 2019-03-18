@@ -6,7 +6,6 @@ import java.security.KeyPair;
 import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.util.Arrays;
-import java.util.Optional;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
@@ -21,32 +20,27 @@ public class McEliceEncryptionServiceTest {
     private String password = "mypassword";
 
     @Test
-    public void generateKeyStoreAndLoadEnDecryptTest() {
+    public void generateKeyStoreAndLoadEnDecryptTest() throws Exception {
         signatureService.generateKeystore(signKeyStoreName, password);
         classUnderTest.generateKeystore(cipherKeyStoreName, password, signKeyStoreName+".ubr", password);
-        Optional<KeyPair> keyPairOpt = classUnderTest.loadKeyPairFromKeyStore(cipherKeyStoreName+".ubr", password);
-        assertTrue(keyPairOpt.isPresent());
+        KeyPair keyPair = classUnderTest.loadKeyPairFromKeyStore(cipherKeyStoreName+".ubr", password);
         byte [] bytes = new byte [20];
         new SecureRandom().nextBytes(bytes);
-        Optional<byte []> dataOpt = classUnderTest.encrypt(keyPairOpt.get().getPublic(), bytes);
-        assertTrue(dataOpt.isPresent());
-        Optional<byte []> decryptedOpt = classUnderTest.decrypt(keyPairOpt.get().getPrivate(), dataOpt.get());
-        assertTrue(decryptedOpt.isPresent());
-        assertTrue(Arrays.equals(decryptedOpt.get(), bytes));
+        byte [] data = classUnderTest.encrypt(keyPair.getPublic(), bytes);
+        byte [] decrypted = classUnderTest.decrypt(keyPair.getPrivate(), data);
+        assertTrue(Arrays.equals(decrypted, bytes));
     }
 
     @Test
-    public void loadPublicKeyFromEncoded() {
+    public void loadPublicKeyFromEncoded() throws Exception {
         signatureService.generateKeystore(signKeyStoreName, password);
         classUnderTest.generateKeystore(cipherKeyStoreName, password, signKeyStoreName+".ubr", password);
-        Optional<KeyPair> keyPairOpt = classUnderTest.loadKeyPairFromKeyStore(cipherKeyStoreName+".ubr", password);
-        assertTrue(keyPairOpt.isPresent());
-        PublicKey publicKey = keyPairOpt.get().getPublic();
+        KeyPair keyPair = classUnderTest.loadKeyPairFromKeyStore(cipherKeyStoreName+".ubr", password);
+        PublicKey publicKey = keyPair.getPublic();
         byte [] encodedBytes = publicKey.getEncoded();
-        Optional<PublicKey> publicKey2 = classUnderTest.encodedToPublicKey(encodedBytes);
-        assertTrue(publicKey2.isPresent());
-        assertEquals(publicKey.getAlgorithm(), publicKey2.get().getAlgorithm());
-        assertTrue(Arrays.equals(publicKey.getEncoded(), publicKey2.get().getEncoded()));
+        PublicKey publicKey2 = classUnderTest.encodedToPublicKey(encodedBytes);
+        assertEquals(publicKey.getAlgorithm(), publicKey2.getAlgorithm());
+        assertTrue(Arrays.equals(publicKey.getEncoded(), publicKey2.getEncoded()));
         assertEquals(publicKey.hashCode(), publicKey2.hashCode());
     }
 
