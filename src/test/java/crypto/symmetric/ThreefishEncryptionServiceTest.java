@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Optional;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 public class ThreefishEncryptionServiceTest {
@@ -48,6 +49,15 @@ public class ThreefishEncryptionServiceTest {
         Optional<byte []> decryptedDataOpt = classUnderTest.decrypt(secretKeyOpt.get(), list.get(0), list.get(1));
         assertTrue(decryptedDataOpt.isPresent());
         assertTrue(Arrays.equals(data, decryptedDataOpt.get()));
+    }
+
+    @Test
+    public void secretKeyFromEncodedTest() throws Exception {
+       SecretKey key = classUnderTest.generateSecretKey();
+       byte [] keyBytes = key.getEncoded();
+       SecretKey keyRestored = classUnderTest.getSecretKeyFromEncoded(keyBytes);
+       assertTrue(Arrays.equals(keyBytes, keyRestored.getEncoded()));
+       assertEquals(keyRestored.getFormat(), key.getFormat());
     }
 
 }

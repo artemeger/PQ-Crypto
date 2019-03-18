@@ -7,12 +7,19 @@ import org.slf4j.LoggerFactory;
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
+import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
+import java.security.KeyFactory;
 import java.security.KeyStore;
 import java.security.SecureRandom;
 import java.security.Security;
+import java.security.spec.EncodedKeySpec;
+import java.security.spec.KeySpec;
+import java.security.spec.PKCS8EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Optional;
 
@@ -40,6 +47,10 @@ public class ThreefishEncryptionService {
         KeyGenerator generator = KeyGenerator.getInstance(Identifiers.SYMALGORITHM, Identifiers.BCPROVIDER);
         generator.init(Identifiers.KEYSIZE, new SecureRandom());
         return generator.generateKey();
+    }
+
+    public SecretKey getSecretKeyFromEncoded(byte [] keyBytes) {
+        return new SecretKeySpec(keyBytes, 0, keyBytes.length, Identifiers.SYMALGORITHM);
     }
 
     public Optional<SecretKey> loadSecretKeyFromKeyStore(String filename, String password){
