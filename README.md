@@ -1,5 +1,5 @@
 # post-quantum cryptography
-This library contains everything you need for PQ safe ancryption
+This library contains everything you need for PQ safe encryption
 
 1. Threefish 1024-Bit for symmetrical encryption
 2. SPHINCS-256 for signatures
